@@ -120,7 +120,9 @@ from_chars_result from_chars_advanced(const char *first, const char *last,
 #endif
 
 #if ((defined(_WIN32) || defined(_WIN64)) && !defined(__clang__))
+#ifndef UNDER_CE
 #include <intrin.h>
+#endif
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
