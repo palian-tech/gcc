@@ -78,6 +78,13 @@
 // Enable use of GetSystemInfo to implement get_nprocs
 #define _GLIBCXX_USE_GET_NPROCS_WIN32 1
 
+// Yes, we support C99, no matter what the test says.
+#define _GLIBCXX_USE_C99_COMPLEX 1
+#define _GLIBCXX_USE_C99_MATH 1
+#define _GLIBCXX_USE_C99_STDIO 1
+#define _GLIBCXX_USE_C99_STDLIB 1
+#define _GLIBCXX_USE_C99_WCHAR 1
+
 // See libstdc++/59807
 #define _GTHREAD_USE_MUTEX_INIT_FUNC 1
 
