@@ -42,7 +42,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     collate<char>::_M_compare(const char* __one,
 			      const char* __two) const throw()
     {
+#ifndef UNDER_CE
       int __cmp = strcoll(__one, __two);
+#else
+      int __cmp = strcmp(__one, __two);
+#endif
       return (__cmp >> (8 * sizeof (int) - 2)) | (__cmp != 0);
     }
 
@@ -50,7 +54,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     size_t
     collate<char>::_M_transform(char* __to, const char* __from,
 				size_t __n) const throw()
-    { return strxfrm(__to, __from, __n); }
+    {
+#ifndef UNDER_CE
+      return strxfrm(__to, __from, __n);
+#else
+      strncpy(__to, __from, __n);
+      return strlen(__from);
+#endif
+    }
 
 #ifdef _GLIBCXX_USE_WCHAR_T
   template<>
