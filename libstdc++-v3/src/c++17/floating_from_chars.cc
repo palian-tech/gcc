@@ -30,6 +30,8 @@
 // Prefer to use std::pmr::string if possible, which requires the cxx11 ABI.
 #define _GLIBCXX_USE_CXX11_ABI 1
 
+#define __STDC_LIMIT_MACROS
+
 #include <algorithm>
 #include <array>
 #include <charconv>
