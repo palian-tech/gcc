@@ -213,6 +213,7 @@ static void arm_elf_asm_destructor (rtx, int) ATTRIBUTE_UNUSED;
 static void arm_encode_section_info (tree, rtx, int);
 
 static void arm_file_end (void);
+#endif
 static void arm_file_start (void);
 static void arm_insert_attributes (tree, tree *);
 
@@ -268,6 +269,9 @@ static void arm_output_dwarf_dtprel (FILE *, int, rtx) ATTRIBUTE_UNUSED;
 static bool arm_output_addr_const_extra (FILE *, rtx);
 static bool arm_allocate_stack_slots_for_args (void);
 static bool arm_warn_func_return (tree);
+#ifdef ARM_WINCE
+static bool arm_ms_bitfield_layout_p (const_tree record_type);
+#endif
 static tree arm_promoted_type (const_tree t);
 static bool arm_scalar_mode_supported_p (scalar_mode);
 static bool arm_frame_pointer_required (void);
@@ -400,12 +404,27 @@ static const scoped_attribute_specs *const arm_attribute_table[] =
 #undef TARGET_ASM_FILE_START
 #define TARGET_ASM_FILE_START arm_file_start
 #undef TARGET_ASM_FILE_END
+#ifdef ARM_PE
+#define TARGET_ASM_FILE_END arm_pe_file_end
+#else
 #define TARGET_ASM_FILE_END arm_file_end
+#endif
 
 #undef  TARGET_ASM_ALIGNED_SI_OP
 #define TARGET_ASM_ALIGNED_SI_OP NULL
 #undef  TARGET_ASM_INTEGER
 #define TARGET_ASM_INTEGER arm_assemble_integer
+
+#ifdef ARM_PE
+#undef  TARGET_ASM_UNALIGNED_HI_OP
+#define TARGET_ASM_UNALIGNED_HI_OP "\t.2byte\t"
+#undef  TARGET_ASM_UNALIGNED_SI_OP
+#define TARGET_ASM_UNALIGNED_SI_OP "\t.4byte\t"
+#undef  TARGET_ASM_UNALIGNED_DI_OP
+#define TARGET_ASM_UNALIGNED_DI_OP "\t.8byte\t"
+#undef  TARGET_ASM_UNALIGNED_TI_OP
+#define TARGET_ASM_UNALIGNED_TI_OP NULL
+#endif
 
 #undef TARGET_PRINT_OPERAND
 #define TARGET_PRINT_OPERAND arm_print_operand
@@ -660,6 +679,13 @@ static const scoped_attribute_specs *const arm_attribute_table[] =
 
 #undef TARGET_LEGITIMATE_CONSTANT_P
 #define TARGET_LEGITIMATE_CONSTANT_P arm_legitimate_constant_p
+
+#ifdef ARM_WINCE
+#undef TARGET_MS_BITFIELD_LAYOUT_P
+#define TARGET_MS_BITFIELD_LAYOUT_P arm_ms_bitfield_layout_p
+#undef TARGET_BINDS_LOCAL_P
+#define TARGET_BINDS_LOCAL_P arm_pe_binds_local_p
+#endif
 
 #undef TARGET_CANNOT_FORCE_CONST_MEM
 #define TARGET_CANNOT_FORCE_CONST_MEM arm_cannot_force_const_mem
@@ -6178,9 +6204,13 @@ arm_return_in_memory (const_tree type, const_tree fntype)
       return (size < 0 || size > UNITS_PER_WORD);
     }
 
-  /* For the arm-wince targets we choose to be compatible with Microsoft's
-     ARM and Thumb compilers, which always return aggregates in memory.  */
-#ifndef ARM_WINCE
+#ifdef ARM_WINCE
+  if (TARGET_RETURN_AGGREGATES_IN_MEMORY
+      && (TREE_CODE (type) == RECORD_TYPE
+      || TREE_CODE (type) == UNION_TYPE))
+    return 1;
+#endif
+
   /* All structures/unions bigger than one word are returned in memory.
      Also catch the case where int_size_in_bytes returns -1.  In this case
      the aggregate is either huge or of variable size, and in either case
@@ -6259,7 +6289,6 @@ arm_return_in_memory (const_tree type, const_tree fntype)
 
       return false;
     }
-#endif /* not ARM_WINCE */
 
   /* Return all other types in memory.  */
   return true;
@@ -20017,7 +20046,9 @@ arm_emit_call_insn (rtx pat, rtx addr, bool sibcall)
       use_reg (&CALL_INSN_FUNCTION_USAGE (insn), fdpic_reg);
     }
 
+#ifndef ARM_PE
   if (TARGET_AAPCS_BASED)
+#endif
     {
       /* For AAPCS, IP and CC can be clobbered by veneers inserted by the
 	 linker.  We need to add an IP clobber to allow setting
@@ -21803,6 +21834,7 @@ output_return_instruction (rtx operand, bool really_return, bool reverse,
   return "";
 }
 
+#ifndef ARM_PE
 /* Output in FILE asm statements needed to declare the NAME of the function
    defined by its DECL node.  */
 
@@ -21840,6 +21872,8 @@ arm_asm_declare_function_name (FILE *file, const char *name, tree decl)
 
   ARM_OUTPUT_FN_UNWIND (file, TRUE);
 }
+
+#endif
 
 /* Write the function name into the code section, directly preceding
    the function prologue.
@@ -25058,6 +25092,8 @@ arm_assemble_integer (rtx x, unsigned int size, int aligned_p)
   return default_assemble_integer (x, size, aligned_p);
 }
 
+#ifdef OBJECT_FORMAT_ELF
+
 static void
 arm_elf_asm_cdtor (rtx symbol, int priority, bool is_ctor)
 {
@@ -25107,7 +25143,8 @@ arm_elf_asm_destructor (rtx symbol, int priority)
 {
   arm_elf_asm_cdtor (symbol, priority, /*is_ctor=*/false);
 }
-
+#endif
+
 /* A finite state machine takes care of noticing whether or not instructions
    can be conditionally executed, and thus decrease execution time and code
    size by deleting branch instructions.  The fsm is controlled by
@@ -28768,6 +28805,8 @@ arm_file_start (void)
   default_file_start ();
 }
 
+#ifndef ARM_PE
+
 static void
 arm_file_end (void)
 {
@@ -30400,6 +30439,36 @@ arm_output_addr_const_extra (FILE *fp, rtx x)
     return arm_emit_vector_const (fp, x);
 
   return FALSE;
+}
+
+#ifdef ARM_WINCE
+static bool
+arm_ms_bitfield_layout_p (const_tree record_type)
+{
+  return (TARGET_MS_BITFIELD_LAYOUT &&
+	  !lookup_attribute ("gcc_struct", TYPE_ATTRIBUTES (record_type)))
+    || lookup_attribute ("ms_struct", TYPE_ATTRIBUTES (record_type));
+}
+#endif
+
+int
+arm_major_arch (void)
+{
+  if (bitmap_bit_p(arm_active_target.isa, isa_bit_armv6))
+    return 6;
+  else if (bitmap_bit_p(arm_active_target.isa, isa_bit_armv5t))
+    return 5;
+  else if (bitmap_bit_p(arm_active_target.isa, isa_bit_armv4))
+    return 4;
+
+  /* This should gives us a nice ICE somewhere.  */
+  return -1;
+}
+
+bool
+arm_thumb_arch_p (void)
+{
+  return bitmap_bit_p(arm_active_target.isa, isa_bit_thumb);
 }
 
 /* Output assembly for a shift instruction.

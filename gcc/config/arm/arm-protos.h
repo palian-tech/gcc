@@ -27,6 +27,13 @@
 
 rtl_opt_pass *make_pass_insert_bti (gcc::context *ctxt);
 
+extern void arm_pe_maybe_record_exported_symbol (tree, const char *, int);
+
+extern void arm_pe_start_function (FILE *, const char *, tree);
+extern void arm_pe_end_function (FILE *, const char *, tree);
+
+extern void arm_pe_file_end (void);
+
 extern enum unwind_info_type arm_except_unwind_info (struct gcc_options *);
 extern int use_return_insn (int, rtx);
 extern bool use_simple_return_p (void);
@@ -50,6 +57,9 @@ extern HOST_WIDE_INT thumb_compute_initial_elimination_offset (unsigned int,
 							       unsigned int);
 extern unsigned int arm_debugger_regno (unsigned int);
 extern void arm_output_fn_unwind (FILE *, bool);
+
+extern int arm_major_arch (void);
+extern bool arm_thumb_arch_p (void);
 
 extern rtx arm_expand_builtin (tree exp, rtx target, rtx subtarget
 			       ATTRIBUTE_UNUSED, machine_mode mode
@@ -267,7 +277,24 @@ extern const char *thumb1_output_casesi (rtx *);
 extern const char *thumb2_output_casesi (rtx *);
 #endif
 
+/* Defined in pe.c.  */
+extern int arm_dllexport_name_p (const char *);
+extern int arm_dllimport_name_p (const char *);
+
+#ifdef TREE_CODE
+extern void arm_pe_unique_section (tree, int);
+extern void arm_pe_encode_section_info (tree, rtx, int);
+extern bool arm_pe_binds_local_p (const_tree exp);
+extern unsigned int arm_pe_section_type_flags (tree, const char *, int);
+extern int arm_dllexport_p (tree);
+extern int arm_dllimport_p (tree);
+extern void arm_mark_dllexport (tree);
+extern void arm_mark_dllimport (tree);
+#endif
+
 extern bool arm_change_mode_p (tree);
+
+extern void arm_pe_record_external_function (tree, const char *);
 
 extern tree arm_valid_target_attribute_tree (tree, struct gcc_options *,
 					     struct gcc_options *);
