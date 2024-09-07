@@ -43,7 +43,7 @@ Boston, MA 02110-1301, USA.  */
       \
       /* We currently define UNDER_CE to a non-value, as it seems \
          MSVC2005 does the same.  */ \
-      builtin_define_std ("UNDER_CE");				\
+      builtin_define ("UNDER_CE");				\
       builtin_define ("_UNICODE");				\
       builtin_define_std ("UNICODE");				\
       \
