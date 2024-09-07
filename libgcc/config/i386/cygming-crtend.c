@@ -58,6 +58,9 @@ extern void __gcc_deregister_frame (void);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wprio-ctor-dtor"
+
+#ifndef UNDER_CE
+
 static void register_frame_ctor (void) __attribute__ ((constructor (0)));
 #pragma GCC diagnostic pop
 
@@ -78,4 +81,7 @@ deregister_frame_dtor (void)
 {
   __gcc_deregister_frame ();
 }
+
+#endif
+
 #endif
