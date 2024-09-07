@@ -51,6 +51,8 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 # include <string.h>
 #endif
 
+#include "malloc.h"
+
 #if !HAVE_DECL_GETS
 extern char *gets (char *);
 #endif
