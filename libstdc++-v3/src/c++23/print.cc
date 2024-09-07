@@ -22,6 +22,8 @@
 // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 // <http://www.gnu.org/licenses/>.
 
+#ifndef UNDER_CE
+
 // We want to emit symbols for the inline functions in bits/print.h here.
 #define _GLIBCXX_NO_INLINE_PRINT 1
 #include <ostream>
@@ -370,3 +372,5 @@ namespace
   }
 _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std
+
+#endif
