@@ -35,15 +35,21 @@
 using std::FILE;
 using std::fpos_t;
 
+#ifndef UNDER_CE
 using std::remove;
+#endif
 using std::rename;
+#ifndef UNDER_CE
 using std::tmpfile;
+#endif
 using std::tmpnam;
 using std::fclose;
 using std::fflush;
 using std::fopen;
 using std::freopen;
+#ifndef UNDER_CE
 using std::setbuf;
+#endif
 using std::setvbuf;
 using std::fprintf;
 using std::fscanf;
@@ -76,7 +82,9 @@ using std::fgetpos;
 using std::fseek;
 using std::fsetpos;
 using std::ftell;
+#ifndef UNDER_CE
 using std::rewind;
+#endif
 using std::clearerr;
 using std::feof;
 using std::ferror;

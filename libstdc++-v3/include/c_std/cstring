@@ -82,14 +82,20 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
   using ::strncat;
   using ::memcmp;
   using ::strcmp;
+#ifndef UNDER_CE
   using ::strcoll;
+#endif
   using ::strncmp;
+#ifndef UNDER_CE
   using ::strxfrm;
+#endif
   using ::strcspn;
   using ::strspn;
   using ::strtok;
   using ::memset;
+#ifndef UNDER_CE
   using ::strerror;
+#endif
   using ::strlen;
   using ::memchr;
   using ::strchr;

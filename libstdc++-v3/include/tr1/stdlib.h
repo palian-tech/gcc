@@ -37,7 +37,9 @@
 
 #if _GLIBCXX_USE_C99_STDLIB
 
+#ifndef UNDER_CE
 using std::tr1::atoll;
+#endif
 using std::tr1::strtoll;
 using std::tr1::strtoull;
 

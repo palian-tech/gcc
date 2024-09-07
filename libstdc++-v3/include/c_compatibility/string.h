@@ -40,9 +40,13 @@ using std::strcat;
 using std::strncat;
 using std::memcmp;
 using std::strcmp;
+#ifndef UNDER_CE
 using std::strcoll;
+#endif
 using std::strncmp;
+#ifndef UNDER_CE
 using std::strxfrm;
+#endif
 using std::memchr;
 using std::strchr;
 using std::strcspn;
@@ -54,7 +58,9 @@ using std::strstr;
 using std::strtok;
 #endif
 using std::memset;
+#ifndef UNDER_CE
 using std::strerror;
+#endif
 using std::strlen;
 #endif
 

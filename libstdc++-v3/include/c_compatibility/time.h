@@ -47,7 +47,9 @@ using std::clock_t;
 using std::time_t;
 using std::tm;
 
+#ifndef UNDER_CE
 using std::clock;
+#endif
 using std::difftime;
 using std::mktime;
 using std::time;

@@ -56,7 +56,9 @@ namespace tr1
   using std::lldiv;
 #endif
 
+#ifndef UNDER_CE
   using std::atoll;
+#endif
   using std::strtoll;
   using std::strtoull;
 

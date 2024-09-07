@@ -67,9 +67,13 @@ using std::labs;
 using std::ldiv;
 using std::malloc;
 #ifdef _GLIBCXX_HAVE_MBSTATE_T
+#ifndef UNDER_CE
 using std::mblen;
+#endif
 using std::mbstowcs;
+#ifndef UNDER_CE
 using std::mbtowc;
+#endif
 #endif // _GLIBCXX_HAVE_MBSTATE_T
 using std::qsort;
 using std::rand;
@@ -78,7 +82,9 @@ using std::srand;
 using std::strtod;
 using std::strtol;
 using std::strtoul;
+#ifndef UNDER_CE
 using std::system;
+#endif
 #ifdef _GLIBCXX_USE_WCHAR_T
 using std::wcstombs;
 using std::wctomb;
