@@ -97,11 +97,14 @@ extern void *memset (void *, int, size_t);
 /* All systems have this header.  */
 #include <sys/types.h>
 
+#ifndef UNDER_CE
+
 /* All systems have this header.  */
 #include <errno.h>
 
 #ifndef errno
 extern int errno;
+#endif
 #endif
 
 /* If these system headers do not exist, fixincludes must create them.  */
