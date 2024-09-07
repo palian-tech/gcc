@@ -2217,7 +2217,14 @@ public:
   /* opt_pass methods: */
   bool gate (function *) final override
     {
+#ifdef ARM_WINCE
+      /* there's no sincos() on WinCE; it's emulated using cexp(), and
+         cexp() calls sin() and cos(), which again will be optimized
+         to sincos() - endless loop closed */
+      return false;
+#else
       return optimize;
+#endif
     }
 
   unsigned int execute (function *) final override;
