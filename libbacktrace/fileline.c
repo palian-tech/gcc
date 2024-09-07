@@ -300,8 +300,13 @@ fileline_initialize (struct backtrace_state *state,
 	  filename = "/proc/curproc/file";
 	  break;
 	case 5:
+#ifndef UNDER_CE
 	  snprintf (buf, sizeof (buf), "/proc/%ld/object/a.out",
 		    (long) getpid ());
+#else
+	  snprintf (buf, sizeof (buf), "/proc/%ld/object/a.out",
+		    (long) GetCurrentProcessId ());
+#endif
 	  filename = buf;
 	  break;
 	case 6:
