@@ -22,6 +22,8 @@
 // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 // <http://www.gnu.org/licenses/>.
 
+#ifndef UNDER_CE
+
 #ifndef _GLIBCXX_USE_CXX11_ABI
 # define _GLIBCXX_USE_CXX11_ABI 1
 #endif
@@ -2127,3 +2129,5 @@ fs::filesystem_error::path2() const noexcept
 const char*
 fs::filesystem_error::what() const noexcept
 { return _M_impl->what.c_str(); }
+
+#endif

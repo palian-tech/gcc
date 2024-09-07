@@ -22,6 +22,8 @@
 // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 // <http://www.gnu.org/licenses/>.
 
+#ifndef UNDER_CE
+
 #ifndef _GLIBCXX_USE_CXX11_ABI
 # define _GLIBCXX_USE_CXX11_ABI 1
 #endif
@@ -560,3 +562,5 @@ fs::recursive_directory_iterator::__erase(error_code* ecptr)
 
   return *this;
 }
+
+#endif
