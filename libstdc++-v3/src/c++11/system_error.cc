@@ -110,9 +110,13 @@ namespace
 #else
   string strerror_string(int err)
   {
+#ifndef UNDER_CE
     auto str = strerror(err); // XXX Not thread-safe.
     if (str) [[__likely__]]
       return str;
+#else
+    (void) err;
+#endif
     // strerror should not return NULL, but some implementations do.
     return "Unknown error";
   }
