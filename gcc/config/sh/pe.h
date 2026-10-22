@@ -29,6 +29,10 @@ along with GCC; see the file COPYING3.  If not see
    targets (mingwrt and w32api use it).  */
 #define TARGET_DECLSPEC 1
 
+/* PE sections can be aligned up to 8192 bytes.  */
+#undef MAX_OFILE_ALIGNMENT
+#define MAX_OFILE_ALIGNMENT (8192 * 8)
+
 /* Symbols carry a leading underscore, like the Microsoft SH compiler
    (_call2, __divlu).  */
 #undef USER_LABEL_PREFIX
