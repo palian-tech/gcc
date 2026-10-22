@@ -74,8 +74,14 @@ extern int code_for_indirect_jump_scratch;
 
 /* This is not used by the SH2E calling convention  */
 #define TARGET_VARARGS_PRETEND_ARGS(FUN_DECL) \
-  (! TARGET_SH2E \
+  (! TARGET_SH2E && ! TARGET_MSABI \
    && ! (TARGET_HITACHI || sh_attr_renesas_p (FUN_DECL)))
+
+/* Nonzero for the calling convention of the Microsoft SH compiler
+   (Windows CE).  Set by sh/mingw32ce.h.  */
+#ifndef TARGET_MSABI
+#define TARGET_MSABI 0
+#endif
 
 #ifndef TARGET_CPU_DEFAULT
 #define TARGET_CPU_DEFAULT SELECT_SH1

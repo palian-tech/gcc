@@ -1,0 +1,6 @@
+# Windows CE PE/COFF support for sh4-mingw32ce.
+
+sh-pe.o: $(srcdir)/config/sh/sh-pe.cc $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+  $(TM_H) $(TREE_H) output.h $(TM_P_H)
+	$(COMPILER) -c $(ALL_COMPILERFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+		$(srcdir)/config/sh/sh-pe.cc
