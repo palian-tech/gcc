@@ -2408,6 +2408,10 @@
 		(match_operand:SI 2 "general_operand")))]
   ""
 {
+  /* MS ABI: use the __divls library call (see sh_init_libfuncs).  */
+  if (TARGET_MSABI)
+    FAIL;
+
   rtx last;
   rtx func_ptr = gen_reg_rtx (Pmode);
 

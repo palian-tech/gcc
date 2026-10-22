@@ -10,3 +10,8 @@ crtbegin.o: $(srcdir)/config/i386/cygming-crtbegin.c
 # so allow the warning.
 crtend.o: $(srcdir)/config/i386/cygming-crtend.c
 	$(crt_compile) -fno-omit-frame-pointer -Wno-error -c $<
+
+# fp-bit.c overlays the floating-point formats with GCC-layout bit-fields
+# of mixed widths, which the default MS layout would split apart.
+FPBIT_CFLAGS += -mno-ms-bitfields
+DPBIT_CFLAGS += -mno-ms-bitfields

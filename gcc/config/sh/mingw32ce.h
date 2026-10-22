@@ -23,6 +23,10 @@ along with GCC; see the file COPYING3.  If not see
 #undef TARGET_MSABI
 #define TARGET_MSABI 1
 
+/* -mms-bitfields, on by default as on arm-mingw32ce.  */
+#undef SH_MS_BITFIELD_LAYOUT
+#define SH_MS_BITFIELD_LAYOUT TARGET_MS_BITFIELD_LAYOUT
+
 #undef TARGET_OS_CPP_BUILTINS
 #define TARGET_OS_CPP_BUILTINS()				\
   do								\

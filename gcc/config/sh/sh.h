@@ -83,6 +83,11 @@ extern int code_for_indirect_jump_scratch;
 #define TARGET_MSABI 0
 #endif
 
+/* Nonzero to lay out bit-fields like the Microsoft compilers.  */
+#ifndef SH_MS_BITFIELD_LAYOUT
+#define SH_MS_BITFIELD_LAYOUT 0
+#endif
+
 #ifndef TARGET_CPU_DEFAULT
 #define TARGET_CPU_DEFAULT SELECT_SH1
 #define SUPPORT_SH1 1

@@ -7904,9 +7904,10 @@ sh_promote_function_mode (const_tree type, machine_mode mode,
 			  int *punsignedp, const_tree funtype,
 			  int for_return)
 {
-  /* MS ABI: the caller widens prototyped arguments (see
-     sh_promote_prototypes) but neither side relies on it.  */
-  if (sh_promote_prototypes (funtype) && !TARGET_MSABI)
+  /* This matches the MS ABI too: the caller extends char and short
+     arguments and the callee extends such results (callc, retc in
+     msvc-sh4-abi-open-questions.txt).  */
+  if (sh_promote_prototypes (funtype))
     return promote_mode (type, mode, punsignedp);
   else
     return default_promote_function_mode (type, mode, punsignedp, funtype,
@@ -8172,6 +8173,11 @@ sh_function_value (const_tree valtype,
       && !DECL_P (fn_decl_or_type))
     fn_decl_or_type = NULL;
 
+  /* MS ABI: small structs without an integer mode (e.g. 3 bytes) come
+     back in the low bytes of r0 (retS3).  */
+  if (TARGET_MSABI && TYPE_MODE (valtype) == BLKmode)
+    return gen_rtx_REG (SImode, FIRST_RET_REG);
+
   return gen_rtx_REG (
 	   ((GET_MODE_CLASS (TYPE_MODE (valtype)) == MODE_INT
 	     && GET_MODE_SIZE (TYPE_MODE (valtype)) < 4
@@ -8203,13 +8209,14 @@ sh_function_value_regno_p (const unsigned int regno)
 static bool
 sh_return_in_memory (const_tree type, const_tree fndecl)
 {
-  /* MS ABI: 64-bit values and structs of 8 bytes or more are returned
-     through a hidden pointer (ret64, retS8, retS20); a 4-byte struct is
-     returned in r0 (retS4).  */
+  /* MS ABI: values of up to 4 bytes, structs of any of these sizes
+     included, are returned in r0 (retS4, retS3); larger ones, 64-bit
+     scalars included, through a hidden pointer (ret64, retS5, retS6p,
+     retS8, retS20).  */
   if (TARGET_MSABI)
     {
       HOST_WIDE_INT size = int_size_in_bytes (type);
-      return TYPE_MODE (type) == BLKmode || size < 0 || size > 4;
+      return size < 0 || size > 4;
     }
 
   return TYPE_MODE (type) == BLKmode
@@ -8500,13 +8507,15 @@ sh_handle_pe_dll_attribute (tree *node ATTRIBUTE_UNUSED,
 static void
 sh_init_libfuncs (void)
 {
-  /* MS ABI: unsigned 32-bit division and remainder call __divlu and
-     __modlu from coredll.dll (divu in msvc-sh4-abi-reference.txt).
-     Signed division keeps using the libgcc routines.  */
+  /* MS ABI: 32-bit division and remainder call __divlu, __modlu,
+     __divls and __modls from coredll.dll (divu in
+     msvc-sh4-abi-reference.txt, divs in msvc-sh4-abi-open-questions.txt).  */
   if (TARGET_MSABI)
     {
       set_optab_libfunc (udiv_optab, SImode, "_divlu");
       set_optab_libfunc (umod_optab, SImode, "_modlu");
+      set_optab_libfunc (sdiv_optab, SImode, "_divls");
+      set_optab_libfunc (smod_optab, SImode, "_modls");
     }
 }
 
@@ -10133,7 +10142,8 @@ sh_dfa_new_cycle (FILE *sched_dump ATTRIBUTE_UNUSED,
 static bool
 sh_ms_bitfield_layout_p (const_tree record_type ATTRIBUTE_UNUSED)
 {
-  return TARGET_HITACHI || TARGET_MSABI || sh_attr_renesas_p (record_type);
+  return TARGET_HITACHI || SH_MS_BITFIELD_LAYOUT
+	 || sh_attr_renesas_p (record_type);
 }
 
 /*
