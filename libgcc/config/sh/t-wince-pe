@@ -1,0 +1,12 @@
+# Windows CE (sh4-mingw32ce): constructor and EH frame registration
+# objects shared with the other mingw targets.
+
+CUSTOM_CRTSTUFF = yes
+
+crtbegin.o: $(srcdir)/config/i386/cygming-crtbegin.c
+	$(crt_compile) -fno-omit-frame-pointer -c $<
+
+# We intentionally use a implementation-reserved init priority of 0,
+# so allow the warning.
+crtend.o: $(srcdir)/config/i386/cygming-crtend.c
+	$(crt_compile) -fno-omit-frame-pointer -Wno-error -c $<

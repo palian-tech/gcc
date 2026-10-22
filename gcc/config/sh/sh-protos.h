@@ -363,4 +363,18 @@ extern machine_mode sh_hard_regno_caller_save_mode (unsigned int, unsigned int,
 						    machine_mode);
 extern bool sh_can_use_simple_return_p (void);
 extern rtx sh_load_function_descriptor (rtx);
+
+/* Windows CE PE/COFF support (sh-pe.c).  */
+#ifdef TREE_CODE
+extern void sh_pe_unique_section (tree, int);
+extern unsigned int sh_pe_section_type_flags (tree, const char *, int);
+extern void sh_pe_asm_named_section (const char *, unsigned int, tree);
+extern void sh_pe_maybe_record_exported_symbol (tree, const char *, bool);
+extern void sh_pe_asm_output_aligned_decl_common (FILE *, tree, const char *,
+						  HOST_WIDE_INT,
+						  HOST_WIDE_INT);
+extern void sh_pe_declare_function_type (FILE *, const char *, int);
+extern void sh_pe_start_function (FILE *, const char *, tree);
+#endif /* TREE_CODE */
+extern void sh_pe_file_end (void);
 #endif /* ! GCC_SH_PROTOS_H */

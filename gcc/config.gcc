@@ -3016,6 +3016,26 @@ sh-*-elf* | sh[12346l]*-*-elf* | \
 	tm_file="$tm_file ./sysroot-suffix.h"
 	tmake_file="$tmake_file t-sysroot-suffix"
 	;;
+sh4*-*-mingw32ce*)
+	# Windows CE on SH-4: PE/COFF, Microsoft calling convention.
+	tm_file="sh/little.h ${tm_file} dbxcoff.h sh/pe.h sh/mingw32ce.h arm/mingw-stdint.h"
+	tmake_file="${tmake_file} sh/t-sh sh/t-pe"
+	extra_options="${extra_options} sh/mingw32ce.opt"
+	extra_objs="${extra_objs} sh-pe.o"
+	TM_ENDIAN_CONFIG=ml
+	TM_MULTILIB_CONFIG=m4-nofpu
+	target_cpu_default="SELECT_SH4_NOFPU"
+	tm_defines="${tm_defines} SH_MULTILIB_CPU_DEFAULT=\\\"m4-nofpu\\\" SUPPORT_SH4_NOFPU=1 SUPPORT_SH4=1 SUPPORT_SH4_SINGLE=1 SUPPORT_SH4_SINGLE_ONLY=1"
+	use_gcc_stdint=wrap
+	gas=yes
+	gnu_ld=yes
+	default_use_cxa_atexit=yes
+	case ${enable_threads} in
+	  "" | yes | win32)
+	    thread_file='win32'
+	    ;;
+	esac
+	;;
 sh-*-rtems*)
 	tmake_file="${tmake_file} sh/t-sh sh/t-rtems"
 	tm_file="${tm_file} dbxelf.h elfos.h sh/elf.h sh/embed-elf.h sh/rtemself.h rtems.h newlib-stdint.h"

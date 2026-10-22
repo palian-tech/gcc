@@ -211,6 +211,8 @@ static tree sh2a_handle_function_vector_handler_attribute (tree *, tree,
 static tree sh_handle_sp_switch_attribute (tree *, tree, tree, int, bool *);
 static tree sh_handle_trap_exit_attribute (tree *, tree, tree, int, bool *);
 static tree sh_handle_renesas_attribute (tree *, tree, tree, int, bool *);
+static tree sh_handle_pe_dll_attribute (tree *, tree, tree, int, bool *);
+static void sh_init_libfuncs (void);
 static void sh_print_operand (FILE *, rtx, int);
 static void sh_print_operand_address (FILE *, machine_mode, rtx);
 static bool sh_print_operand_punct_valid_p (unsigned char code);
@@ -351,6 +353,12 @@ static const struct attribute_spec sh_attribute_table[] =
     sh_handle_resbank_handler_attribute, NULL },
   { "function_vector",   1, 1, true,  false, false, false,
     sh2a_handle_function_vector_handler_attribute, NULL },
+#ifdef TARGET_SH_PE
+  { "dllimport",         0, 0, false, false, false, false,
+    sh_handle_pe_dll_attribute, NULL },
+  { "dllexport",         0, 0, false, false, false, false,
+    sh_handle_pe_dll_attribute, NULL },
+#endif
   { NULL,                0, 0, false, false, false, false, NULL, NULL }
 };
 
@@ -394,6 +402,14 @@ static const struct attribute_spec sh_attribute_table[] =
 #define TARGET_ASM_FILE_START sh_file_start
 #undef TARGET_ASM_FILE_START_FILE_DIRECTIVE
 #define TARGET_ASM_FILE_START_FILE_DIRECTIVE true
+
+#ifdef TARGET_SH_PE
+#undef TARGET_ASM_FILE_END
+#define TARGET_ASM_FILE_END sh_pe_file_end
+#endif
+
+#undef TARGET_INIT_LIBFUNCS
+#define TARGET_INIT_LIBFUNCS sh_init_libfuncs
 
 #undef TARGET_ASM_INTEGER
 #define TARGET_ASM_INTEGER sh_assemble_integer
@@ -7516,7 +7532,7 @@ sh_build_builtin_va_list (void)
   tree record, type_decl;
 
   if ((! TARGET_SH2E && ! TARGET_SH4)
-      || TARGET_HITACHI || sh_cfun_attr_renesas_p ())
+      || TARGET_HITACHI || TARGET_MSABI || sh_cfun_attr_renesas_p ())
     return ptr_type_node;
 
   record = (*lang_hooks.types.make_type) (RECORD_TYPE);
@@ -7570,7 +7586,7 @@ sh_va_start (tree valist, rtx nextarg)
   int nfp, nint;
 
   if ((! TARGET_SH2E && ! TARGET_SH4)
-      || TARGET_HITACHI || sh_cfun_attr_renesas_p ())
+      || TARGET_HITACHI || TARGET_MSABI || sh_cfun_attr_renesas_p ())
     {
       std_expand_builtin_va_start (valist, nextarg);
       return;
@@ -7673,7 +7689,7 @@ sh_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
   tree pptr_type_node = build_pointer_type (ptr_type_node);
 
   if ((TARGET_SH2E || TARGET_SH4)
-      && ! (TARGET_HITACHI || sh_cfun_attr_renesas_p ()))
+      && ! (TARGET_HITACHI || TARGET_MSABI || sh_cfun_attr_renesas_p ()))
     {
       tree f_next_o, f_next_o_limit, f_next_fp, f_next_fp_limit, f_next_stack;
       tree next_o, next_o_limit, next_fp, next_fp_limit, next_stack;
@@ -7888,7 +7904,9 @@ sh_promote_function_mode (const_tree type, machine_mode mode,
 			  int *punsignedp, const_tree funtype,
 			  int for_return)
 {
-  if (sh_promote_prototypes (funtype))
+  /* MS ABI: the caller widens prototyped arguments (see
+     sh_promote_prototypes) but neither side relies on it.  */
+  if (sh_promote_prototypes (funtype) && !TARGET_MSABI)
     return promote_mode (type, mode, punsignedp);
   else
     return default_promote_function_mode (type, mode, punsignedp, funtype,
@@ -8131,7 +8149,9 @@ sh_function_arg_advance (cumulative_args_t ca_v, machine_mode mode,
 static rtx
 sh_struct_value_rtx (tree fndecl, int incoming ATTRIBUTE_UNUSED)
 {
-  if (TARGET_HITACHI || sh_attr_renesas_p (fndecl))
+  /* MS ABI: the address is an invisible first argument (r4); see
+     ret64/retS8 in msvc-sh4-abi-reference.txt.  */
+  if (TARGET_HITACHI || TARGET_MSABI || sh_attr_renesas_p (fndecl))
     return NULL_RTX;
   return gen_rtx_REG (Pmode, 2);
 }
@@ -8183,6 +8203,15 @@ sh_function_value_regno_p (const unsigned int regno)
 static bool
 sh_return_in_memory (const_tree type, const_tree fndecl)
 {
+  /* MS ABI: 64-bit values and structs of 8 bytes or more are returned
+     through a hidden pointer (ret64, retS8, retS20); a 4-byte struct is
+     returned in r0 (retS4).  */
+  if (TARGET_MSABI)
+    {
+      HOST_WIDE_INT size = int_size_in_bytes (type);
+      return TYPE_MODE (type) == BLKmode || size < 0 || size > 4;
+    }
+
   return TYPE_MODE (type) == BLKmode
 	 || ((TARGET_HITACHI || sh_attr_renesas_p (fndecl))
 	     && TREE_CODE (type) == RECORD_TYPE);
@@ -8201,6 +8230,29 @@ sh_setup_incoming_varargs (cumulative_args_t ca,
 			   int second_time ATTRIBUTE_UNUSED)
 {
   gcc_assert (cfun->stdarg);
+  if (TARGET_MSABI)
+    {
+      /* The caller always reserves 16 bytes for r4..r7 right below the
+	 stack arguments (call2, call5, callv in
+	 msvc-sh4-abi-reference.txt).  Store the anonymous argument
+	 registers there, so that all variable arguments form one array
+	 and va_list can be a plain pointer.  */
+      CUMULATIVE_ARGS next = *get_cumulative_args (ca);
+      sh_function_arg_advance (pack_cumulative_args (&next), mode, type,
+			       true);
+      for (int i = next.arg_count[(int) SH_ARG_INT];
+	   i < NPARM_REGS (SImode); i++)
+	{
+	  rtx mem = gen_rtx_MEM (SImode,
+				 plus_constant (Pmode,
+						virtual_incoming_args_rtx,
+						i * UNITS_PER_WORD));
+	  MEM_NOTRAP_P (mem) = 1;
+	  set_mem_alias_set (mem, get_varargs_alias_set ());
+	  emit_move_insn (mem, gen_rtx_REG (SImode, FIRST_PARM_REG + i));
+	}
+      return;
+    }
   if (TARGET_VARARGS_PRETEND_ARGS (current_function_decl))
     {
       int named_parm_regs, anon_parm_regs;
@@ -8430,6 +8482,33 @@ sh_insert_attributes (tree node, tree *attributes)
 	mode.  Takes an argument that specifies the slot number in the table
 	where this function can be looked up by the JSR/N @@(disp8,TBR) insn.
 */
+
+/* Handle a "dllimport" or "dllexport" attribute (PE targets).  dllimport
+   is accepted and ignored, as on arm-mingw32ce: calls go through the jump
+   stubs of the import library.  dllexport is acted upon in sh-pe.c.  */
+static tree
+sh_handle_pe_dll_attribute (tree *node ATTRIBUTE_UNUSED,
+			    tree name ATTRIBUTE_UNUSED,
+			    tree args ATTRIBUTE_UNUSED,
+			    int flags ATTRIBUTE_UNUSED,
+			    bool *no_add_attrs ATTRIBUTE_UNUSED)
+{
+  return NULL_TREE;
+}
+
+/* Set up library functions that differ from the GCC defaults.  */
+static void
+sh_init_libfuncs (void)
+{
+  /* MS ABI: unsigned 32-bit division and remainder call __divlu and
+     __modlu from coredll.dll (divu in msvc-sh4-abi-reference.txt).
+     Signed division keeps using the libgcc routines.  */
+  if (TARGET_MSABI)
+    {
+      set_optab_libfunc (udiv_optab, SImode, "_divlu");
+      set_optab_libfunc (umod_optab, SImode, "_modlu");
+    }
+}
 
 /* Handle a 'resbank' attribute.  */
 static tree
@@ -10054,7 +10133,7 @@ sh_dfa_new_cycle (FILE *sched_dump ATTRIBUTE_UNUSED,
 static bool
 sh_ms_bitfield_layout_p (const_tree record_type ATTRIBUTE_UNUSED)
 {
-  return TARGET_HITACHI || sh_attr_renesas_p (record_type);
+  return TARGET_HITACHI || TARGET_MSABI || sh_attr_renesas_p (record_type);
 }
 
 /*
