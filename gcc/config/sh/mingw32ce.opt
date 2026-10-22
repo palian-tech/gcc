@@ -30,3 +30,7 @@ Use Mingw-specific thread support.
 mwin32
 Target
 Set Windows defines.
+
+mms-bitfields
+Target Report Var(TARGET_MS_BITFIELD_LAYOUT) Init(1)
+Use the Microsoft bit-field layout (default).
