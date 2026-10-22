@@ -25,6 +25,10 @@ along with GCC; see the file COPYING3.  If not see
 
 #define TARGET_EXECUTABLE_SUFFIX ".exe"
 
+/* Predefine __declspec(x) as __attribute__((x)), as on the other PE
+   targets (mingwrt and w32api use it).  */
+#define TARGET_DECLSPEC 1
+
 /* Symbols carry a leading underscore, like the Microsoft SH compiler
    (_call2, __divlu).  */
 #undef USER_LABEL_PREFIX

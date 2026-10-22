@@ -87,7 +87,7 @@ along with GCC; see the file COPYING3.  If not see
 #undef LINK_SPEC
 #define LINK_SPEC "%{shared|mdll: --shared} \
   %{static:-Bstatic} %{!static:-Bdynamic} \
-  %{shared|mdll: -e DllMainCRTStartup}"
+  %{shared|mdll: -e _DllMainCRTStartup}"
 
 #undef LIBGCC_SPEC
 #define LIBGCC_SPEC \
