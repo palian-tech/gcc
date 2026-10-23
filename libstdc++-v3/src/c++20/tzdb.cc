@@ -49,6 +49,12 @@
 # include <cstdlib>   // getenv
 #endif
 
+#ifdef UNDER_CE
+// Windows CE lacks GetModuleHandleExA and GetDynamicTimeZoneInformation:
+// no zoneinfo next to the DLL and no detection of the current zone.
+# undef _GLIBCXX_HAVE_WINDOWS_H
+#endif
+
 #if _GLIBCXX_HAVE_WINDOWS_H
 # define WIN32_LEAN_AND_MEAN
 # include <windows.h>
