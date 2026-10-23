@@ -2383,7 +2383,7 @@ x86_64-*-fuchsia*)
 arm-*-mingw32*)
 	tm_file="arm/semi.h arm/aout.h ${tm_file} arm/coff.h arm/pe.h arm/wince-pe.h arm/mingw32.h arm/mingw-stdint.h"
 	xm_file="i386/xm-mingw32.h"
-	tmake_file="${tmake_file} i386/t-cygming arm/t-arm arm/t-wince-pe arm/t-cygming arm/t-mingw32"
+	tmake_file="${tmake_file} mingw/t-cygming arm/t-arm arm/t-wince-pe"
 	target_gtfiles="${target_gtfiles} \$(srcdir)/config/arm/pe.cc"
 	extra_options="${extra_options} arm/pe.opt arm/cygming.opt"
 	extra_objs="${extra_objs} pe.o pe-stubs.o"
