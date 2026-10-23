@@ -31,8 +31,12 @@ along with GCC; see the file COPYING3.  If not see
 #define TARGET_OS_CPP_BUILTINS()				\
   do								\
     {								\
-      /* UNDER_CE without a value, as on arm-mingw32ce.  */	\
+      /* UNDER_CE without a value, as on arm-mingw32ce, also	\
+	 with -std=c++NN / -std=cNN: the runtime headers and	\
+	 libstdc++ test it.  */					\
       builtin_define_std ("UNDER_CE");				\
+      if (flag_iso)						\
+	builtin_define ("UNDER_CE");				\
       builtin_define ("_UNICODE");				\
       builtin_define_std ("UNICODE");				\
       /* The SH-4 defines of the eVC4 SH-4 project templates.  */ \
