@@ -162,7 +162,37 @@ namespace
     string
     message(int i) const final
     {
-#if defined(_WIN32) && !defined(__CYGWIN__)
+#if defined(UNDER_CE)
+      // Windows CE has only the wide character FormatMessage.
+      wchar_t* wbuf = nullptr;
+      auto wlen
+	= FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM
+			 | FORMAT_MESSAGE_ALLOCATE_BUFFER
+			 | FORMAT_MESSAGE_IGNORE_INSERTS,
+			 nullptr,
+			 i,
+			 LANG_USER_DEFAULT,
+			 reinterpret_cast<LPWSTR>(&wbuf),
+			 0,
+			 nullptr);
+      if (wlen > 0)
+      {
+	struct deleter {
+	  void operator()(void* p) const { ::LocalFree(p); }
+	};
+	std::unique_ptr<wchar_t[], deleter> guard(wbuf);
+	int len = ::WideCharToMultiByte(CP_ACP, 0, wbuf, (int) wlen,
+					nullptr, 0, nullptr, nullptr);
+	string str(len > 0 ? len : 0, '\0');
+	if (len > 0)
+	  ::WideCharToMultiByte(CP_ACP, 0, wbuf, (int) wlen, &str[0], len,
+				nullptr, nullptr);
+	if (str.size() > 2 && str.compare(str.size() - 2, 2, "\r\n") == 0)
+	  str.resize(str.size() - 2 - (str[str.size() - 3] == '.'));
+	return str;
+      }
+      return string("Unknown error code");
+#elif defined(_WIN32) && !defined(__CYGWIN__)
       char* buf = nullptr;
       auto len
 	= FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM
