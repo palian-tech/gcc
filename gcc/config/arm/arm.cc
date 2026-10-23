@@ -210,6 +210,7 @@ static int aapcs_select_return_coproc (const_tree, const_tree);
 static void arm_elf_asm_constructor (rtx, int) ATTRIBUTE_UNUSED;
 static void arm_elf_asm_destructor (rtx, int) ATTRIBUTE_UNUSED;
 #endif
+#ifndef ARM_PE
 static void arm_encode_section_info (tree, rtx, int);
 
 static void arm_file_end (void);
@@ -494,7 +495,11 @@ static const scoped_attribute_specs *const arm_attribute_table[] =
 #define TARGET_MEMORY_MOVE_COST arm_memory_move_cost
 
 #undef TARGET_ENCODE_SECTION_INFO
+#ifdef ARM_PE
+#define TARGET_ENCODE_SECTION_INFO  arm_pe_encode_section_info
+#else
 #define TARGET_ENCODE_SECTION_INFO  arm_encode_section_info
+#endif
 
 #undef  TARGET_STRIP_NAME_ENCODING
 #define TARGET_STRIP_NAME_ENCODING arm_strip_name_encoding
@@ -28857,6 +28862,7 @@ arm_encode_section_info (tree decl, rtx rtl, int first)
 
   default_encode_section_info (decl, rtl, first);
 }
+#endif /* !ARM_PE */
 
 static void
 arm_internal_label (FILE *stream, const char *prefix, unsigned long labelno)
