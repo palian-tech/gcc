@@ -874,6 +874,16 @@ sh_option_override (void)
   if (!TARGET_SH3 && TARGET_USERMODE)
     TARGET_USERMODE = false;
 
+  /* The Microsoft compiler's FPU code (/Qsh4) runs with FPSCR.PR = 0 and
+     FPSCR.SZ = 0 at calls and returns, and has float and double in FPU
+     registers: -m4-single, without -mfmovd.  */
+  if (TARGET_MSABI && TARGET_FPU_ANY
+      && (!TARGET_FPU_DOUBLE || !TARGET_FPU_SINGLE || TARGET_FPU_SINGLE_ONLY))
+    error ("only %<-m4-nofpu%> and %<-m4-single%> are supported "
+	   "for this target");
+  if (TARGET_MSABI && TARGET_FMOVD)
+    error ("%<-mfmovd%> is not supported for this target");
+
   if (! strcmp (sh_div_str, "call-div1"))
     sh_div_strategy = SH_DIV_CALL_DIV1;
   else if (! strcmp (sh_div_str, "call-fp") && TARGET_FPU_ANY)
@@ -7980,6 +7990,60 @@ get_sh_arg_class (machine_mode mode)
   return SH_ARG_INT;
 }
 
+/* True for the FPU calling convention of the Microsoft SH-4 compiler
+   with /Qsh4 (-m4-single on sh4-mingw32ce; fpu-cases in
+   docs/sh4/msvc-sh4-fpu-cases.txt of cegcc-build).
+
+   Every argument takes 4-byte slots, counted in arg_count[SH_ARG_INT].
+   An argument of the integer class (anything but a named float or
+   double, structs of floats and anonymous doubles included) goes in
+   r4+slot for slots 0..3, split between r7 and the stack if it starts
+   in slot 3, and otherwise on the stack at @(16+4*(slot-4),r15) and up,
+   above the 16-byte home area.  A named float goes in the lowest free
+   single of fr4..fr11 and a named double in the lowest free pair of
+   dr4..dr10, independently of the slots, so a float can fill a single
+   left over before a double; when no register is free it goes on the
+   stack in its slots.  ms_fp_used records the FPU registers in use.  */
+static bool
+sh_ms_fpu_abi_p (void)
+{
+  return TARGET_MSABI && TARGET_FPU_DOUBLE;
+}
+
+/* Whether ARG goes in FPU registers under sh_ms_fpu_abi_p.  */
+static bool
+sh_ms_fp_arg_p (const function_arg_info &arg)
+{
+  return (arg.named
+	  && (arg.mode == SFmode || arg.mode == DFmode)
+	  && (arg.type == NULL_TREE || SCALAR_FLOAT_TYPE_P (arg.type)));
+}
+
+/* The register for a float or double argument of mode MODE under
+   sh_ms_fpu_abi_p, counted from fr4, or -1 if none is free.  */
+static int
+sh_ms_fp_arg_reg (const CUMULATIVE_ARGS &cum, machine_mode mode)
+{
+  int step = mode == DFmode ? 2 : 1;
+  int mask = mode == DFmode ? 3 : 1;
+
+  for (int i = 0; i < NPARM_REGS (SFmode); i += step)
+    if ((cum.ms_fp_used & (mask << i)) == 0)
+      return i;
+  return -1;
+}
+
+/* Whether an integer-class argument ARG starts in r4..r7 under
+   sh_ms_fpu_abi_p.  */
+static bool
+sh_ms_int_arg_in_reg_p (const CUMULATIVE_ARGS &cum,
+			const function_arg_info &arg)
+{
+  return ((arg.type == NULL_TREE || !TREE_ADDRESSABLE (arg.type))
+	  && !cum.force_mem
+	  && cum.arg_count[(int) SH_ARG_INT] < NPARM_REGS (SImode));
+}
+
 /* Round a register number up to a proper boundary for an arg of mode
    MODE.
    The SH doesn't care about double alignment, so we only
@@ -8034,6 +8098,18 @@ sh_arg_partial_bytes (cumulative_args_t cum_v, const function_arg_info &arg)
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
   int words = 0;
 
+  if (sh_ms_fpu_abi_p ())
+    {
+      int slot = cum->arg_count[(int) SH_ARG_INT];
+
+      if (!sh_ms_fp_arg_p (arg)
+	  && sh_ms_int_arg_in_reg_p (*cum, arg)
+	  && slot + CEIL (arg.promoted_size_in_bytes (), UNITS_PER_WORD)
+	     > NPARM_REGS (SImode))
+	words = NPARM_REGS (SImode) - slot;
+      return words * UNITS_PER_WORD;
+    }
+
   if (sh_pass_in_reg_p (*cum, arg.mode, arg.type)
       && !TARGET_FPU_DOUBLE
       && (sh_round_reg (*cum, arg.mode)
@@ -8065,6 +8141,19 @@ sh_function_arg (cumulative_args_t ca_v, const function_arg_info &arg)
 
   if (arg.end_marker_p ())
     return ca->renesas_abi ? const1_rtx : const0_rtx;
+
+  if (sh_ms_fpu_abi_p ())
+    {
+      if (sh_ms_fp_arg_p (arg))
+	{
+	  int i = sh_ms_fp_arg_reg (*ca, mode);
+	  return i < 0 ? NULL_RTX : gen_rtx_REG (mode, FIRST_FP_PARM_REG + i);
+	}
+      if (sh_ms_int_arg_in_reg_p (*ca, arg))
+	return gen_rtx_REG (mode,
+			    FIRST_PARM_REG + ca->arg_count[(int) SH_ARG_INT]);
+      return NULL_RTX;
+    }
 
   if (sh_pass_in_reg_p (*ca, mode, arg.type)
       && (arg.named || ! (TARGET_HITACHI || ca->renesas_abi)))
@@ -8115,6 +8204,19 @@ sh_function_arg_advance (cumulative_args_t ca_v,
 
   if (ca->force_mem)
     ca->force_mem = false;
+
+  if (sh_ms_fpu_abi_p ())
+    {
+      if (sh_ms_fp_arg_p (arg))
+	{
+	  int i = sh_ms_fp_arg_reg (*ca, arg.mode);
+	  if (i >= 0)
+	    ca->ms_fp_used |= (arg.mode == DFmode ? 3 : 1) << i;
+	}
+      ca->arg_count[(int) SH_ARG_INT]
+	+= CEIL (arg.promoted_size_in_bytes (), UNITS_PER_WORD);
+      return;
+    }
 
   if ((TARGET_HITACHI || ca->renesas_abi) && TARGET_FPU_DOUBLE)
     {
@@ -8177,6 +8279,11 @@ sh_function_value (const_tree valtype,
   if (TARGET_MSABI && TYPE_MODE (valtype) == BLKmode)
     return gen_rtx_REG (SImode, FIRST_RET_REG);
 
+  /* With the FPU, float and double come back in fr0 and dr0 (call_f,
+     call_id in msvc-sh4-fpu-cases.txt), structs like integers.  */
+  if (sh_ms_fpu_abi_p () && AGGREGATE_TYPE_P (valtype))
+    return gen_rtx_REG (TYPE_MODE (valtype), FIRST_RET_REG);
+
   return gen_rtx_REG (
 	   ((GET_MODE_CLASS (TYPE_MODE (valtype)) == MODE_INT
 	     && GET_MODE_SIZE (TYPE_MODE (valtype)) < 4
@@ -8215,6 +8322,9 @@ sh_return_in_memory (const_tree type, const_tree fndecl)
   if (TARGET_MSABI)
     {
       HOST_WIDE_INT size = int_size_in_bytes (type);
+      if (sh_ms_fpu_abi_p () && TYPE_MODE (type) == DFmode
+	  && SCALAR_FLOAT_TYPE_P (type))
+	return false;
       return size < 0 || size > 4;
     }
 
@@ -8272,10 +8382,13 @@ sh_setup_incoming_varargs (cumulative_args_t ca,
     }
 }
 
+/* With the FPU, the MS ABI passes named float and double arguments in
+   FPU registers and anonymous ones like integers, so the last named
+   argument of a variadic function must count as named.  */
 static bool
 sh_strict_argument_naming (cumulative_args_t ca ATTRIBUTE_UNUSED)
 {
-  return false;
+  return sh_ms_fpu_abi_p ();
 }
 
 static bool
@@ -8283,7 +8396,7 @@ sh_pretend_outgoing_varargs_named (cumulative_args_t ca_v)
 {
   CUMULATIVE_ARGS *ca = get_cumulative_args (ca_v);
 
-  return ! (TARGET_HITACHI || ca->renesas_abi);
+  return ! (TARGET_HITACHI || ca->renesas_abi || sh_ms_fpu_abi_p ());
 }
 
 
@@ -11293,6 +11406,7 @@ sh_init_cumulative_args (CUMULATIVE_ARGS *  pcum,
 {
   pcum->arg_count [(int) SH_ARG_FLOAT] = 0;
   pcum->free_single_fp_reg = 0;
+  pcum->ms_fp_used = 0;
   pcum->outgoing = n_named_args != -1;
 
   /* FIXME: Should we check TARGET_HITACHI here ???  */

@@ -1167,6 +1167,10 @@ struct sh_args
   /* This is set to nonzero when the call in question must use the Renesas ABI,
      even without the -mrenesas option.  */
   bool renesas_abi;
+
+  /* MS ABI with the FPU: a bit for each of fr4..fr11 that holds an
+     argument (sh_ms_fpu_abi_p in sh.cc).  */
+  int ms_fp_used;
 };
 
 typedef sh_args CUMULATIVE_ARGS;

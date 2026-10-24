@@ -3531,7 +3531,9 @@ sh4*-*-mingw32ce*)
 	extra_options="${extra_options} sh/mingw32ce.opt"
 	extra_objs="${extra_objs} sh-pe.o"
 	TM_ENDIAN_CONFIG=ml
-	TM_MULTILIB_CONFIG=m4-nofpu
+	# -m4-nofpu is the default; -m4-single has the FPU calling
+	# convention of the Microsoft compiler's /Qsh4 (sh.cc).
+	TM_MULTILIB_CONFIG=m4-nofpu/m4-single
 	target_cpu_default="SELECT_SH4_NOFPU"
 	tm_defines="${tm_defines} SH_MULTILIB_CPU_DEFAULT=\\\"m4-nofpu\\\" SUPPORT_SH4_NOFPU=1 SUPPORT_SH4=1 SUPPORT_SH4_SINGLE=1 SUPPORT_SH4_SINGLE_ONLY=1"
 	use_gcc_stdint=wrap
