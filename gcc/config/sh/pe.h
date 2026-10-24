@@ -57,9 +57,18 @@ along with GCC; see the file COPYING3.  If not see
 #undef DEBUGGER_REGNO
 #define DEBUGGER_REGNO(REGNO) SH_DEBUGGER_REGNO (REGNO)
 
-/* FIXME: DWARF offsets should be section-relative (.secrel32), which SH
-   gas does not support yet; plain .long offsets are emitted instead, so
-   debug info in linked images is not usable by debuggers.  */
+/* DWARF offsets between debug sections are section-relative
+   (.secrel32): PE sections have their image address, not 0.  */
+#define ASM_OUTPUT_DWARF_OFFSET(FILE, SIZE, LABEL, OFFSET, BASE)	\
+  do {									\
+    if ((SIZE) != 4)							\
+      abort ();								\
+    fputs ("\t.secrel32\t", (FILE));					\
+    assemble_name ((FILE), (LABEL));					\
+    if ((OFFSET) != 0)							\
+      fprintf ((FILE), "+" HOST_WIDE_INT_PRINT_DEC,			\
+	       (HOST_WIDE_INT) (OFFSET));				\
+  } while (0)
 
 /* Sections.  */
 #undef BSS_SECTION_ASM_OP
