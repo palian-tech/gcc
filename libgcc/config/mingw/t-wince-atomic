@@ -1,0 +1,3 @@
+# Windows CE (arm-mingw32ce, sh4-mingw32ce): the __atomic library calls
+# that GCC emits for these targets, which have no libatomic.
+LIB2ADD += $(srcdir)/config/i386/atomic-wince.c
