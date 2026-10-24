@@ -28,6 +28,311 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #ifndef GCC_GTHR_WIN32_H
 #define GCC_GTHR_WIN32_H
 
+#if defined (UNDER_CE) && !defined (_LIBOBJC)
+
+/* Windows CE.  The Vista APIs of the generic Windows port below (SRW
+   locks, condition variables, GetThreadId, GetSystemTimeAsFileTime) do
+   not exist on Windows CE, so this is the pre-Vista design of GCC 12
+   (semaphore-based mutexes, TLS slots), extended to the C++11 thread
+   API:
+
+   1. Mutexes are a counter and a semaphore, as in GCC 12.  The semaphore
+      is created on the first contention, so an uncontended mutex costs
+      no kernel object.
+
+   2. A thread is a descriptor (__gthread_t points to it) that holds its
+      handle and its thread ID; std::thread::id compares descriptors.
+      Threads that libgcc did not create (the main thread, CreateThread)
+      get one on their first __gthread_self call.
+
+   3. Condition variables keep a list of waiters, each waiting on its own
+      event, under an internal mutex.
+
+   4. Key destructors (__gthread_key_create) run when a thread created by
+      __gthread_create returns, not when a CreateThread thread exits.
+
+   5. Timed mutexes are not supported (libstdc++ then builds
+      std::timed_mutex from a condition variable).
+
+   __gthread_active_p is always true: mingwrt's _CRT_MT is 0 unless
+   -mthreads, and Windows CE has no -mthreads runtime DLL.
+
+   All functions are in config/i386/gthr-wince.c in libgcc.a; this
+   header does not include <windows.h>.  */
+
+#define __GTHREADS 1
+#define __GTHREAD_HAS_COND 1
+#define __GTHREADS_CXX0X 1
+
+#if _GTHREAD_USE_MUTEX_TIMEDLOCK
+#error Timed lock primitives are not supported on Windows CE
+#endif
+
+#ifdef __has_attribute
+# if __has_attribute(__always_inline__)
+#  define __GTHREAD_ALWAYS_INLINE __attribute__((__always_inline__))
+# endif
+#endif
+#ifndef __GTHREAD_ALWAYS_INLINE
+# define __GTHREAD_ALWAYS_INLINE
+#endif
+
+#ifdef __cplusplus
+# define __GTHREAD_INLINE inline __GTHREAD_ALWAYS_INLINE
+#else
+# define __GTHREAD_INLINE static inline
+#endif
+
+/* For struct timespec.  */
+#include <time.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct __gthr_wince_thread *__gthread_t;
+typedef unsigned long __gthread_key_t;
+typedef struct { int done; long started; } __gthread_once_t;
+typedef struct {
+  long counter;
+  void *sema;
+} __gthread_mutex_t;
+typedef struct {
+  long counter;
+  int depth;
+  unsigned long owner;
+  void *sema;
+} __gthread_recursive_mutex_t;
+typedef struct {
+  __gthread_mutex_t lock;
+  struct __gthr_wince_waiter *head;
+  struct __gthr_wince_waiter *tail;
+} __gthread_cond_t;
+typedef struct timespec __gthread_time_t;
+
+#define __GTHREAD_ONCE_INIT {0, -1}
+#define __GTHREAD_MUTEX_INIT_FUNCTION __gthread_mutex_init_function
+#define __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION \
+  __gthread_recursive_mutex_init_function
+#define __GTHREAD_COND_INIT_FUNCTION __gthread_cond_init_function
+#define __GTHREAD_TIME_INIT {0, 0}
+
+extern int __gthr_wince_create (__gthread_t *, void *(*) (void*), void *);
+extern int __gthr_wince_join (__gthread_t, void **);
+extern int __gthr_wince_detach (__gthread_t);
+extern __gthread_t __gthr_wince_self (void);
+extern int __gthr_wince_yield (void);
+extern int __gthr_wince_once (__gthread_once_t *, void (*) (void));
+extern int __gthr_wince_key_create (__gthread_key_t *, void (*) (void*));
+extern int __gthr_wince_key_delete (__gthread_key_t);
+extern void *__gthr_wince_getspecific (__gthread_key_t);
+extern int __gthr_wince_setspecific (__gthread_key_t, const void *);
+extern void __gthr_wince_mutex_init_function (__gthread_mutex_t *);
+extern void __gthr_wince_mutex_destroy (__gthread_mutex_t *);
+extern int __gthr_wince_mutex_lock (__gthread_mutex_t *);
+extern int __gthr_wince_mutex_trylock (__gthread_mutex_t *);
+extern int __gthr_wince_mutex_unlock (__gthread_mutex_t *);
+extern void
+  __gthr_wince_recursive_mutex_init_function (__gthread_recursive_mutex_t *);
+extern void __gthr_wince_recursive_mutex_destroy (__gthread_recursive_mutex_t *);
+extern int __gthr_wince_recursive_mutex_lock (__gthread_recursive_mutex_t *);
+extern int __gthr_wince_recursive_mutex_trylock (__gthread_recursive_mutex_t *);
+extern int __gthr_wince_recursive_mutex_unlock (__gthread_recursive_mutex_t *);
+extern void __gthr_wince_cond_init_function (__gthread_cond_t *);
+extern void __gthr_wince_cond_destroy (__gthread_cond_t *);
+extern int __gthr_wince_cond_broadcast (__gthread_cond_t *);
+extern int __gthr_wince_cond_signal (__gthread_cond_t *);
+extern int __gthr_wince_cond_wait (__gthread_cond_t *, __gthread_mutex_t *);
+extern int __gthr_wince_cond_timedwait (__gthread_cond_t *, __gthread_mutex_t *,
+					const __gthread_time_t *);
+extern int __gthr_wince_cond_wait_recursive (__gthread_cond_t *,
+					     __gthread_recursive_mutex_t *);
+
+__GTHREAD_INLINE int
+__gthread_active_p (void)
+{
+  return 1;
+}
+
+__GTHREAD_INLINE int
+__gthread_create (__gthread_t *__thr, void *(*__func) (void*), void *__args)
+{
+  return __gthr_wince_create (__thr, __func, __args);
+}
+
+__GTHREAD_INLINE int
+__gthread_join (__gthread_t __thr, void **__value_ptr)
+{
+  return __gthr_wince_join (__thr, __value_ptr);
+}
+
+__GTHREAD_INLINE int
+__gthread_detach (__gthread_t __thr)
+{
+  return __gthr_wince_detach (__thr);
+}
+
+__GTHREAD_INLINE int
+__gthread_equal (__gthread_t __t1, __gthread_t __t2)
+{
+  return __t1 == __t2;
+}
+
+__GTHREAD_INLINE __gthread_t
+__gthread_self (void)
+{
+  return __gthr_wince_self ();
+}
+
+__GTHREAD_INLINE int
+__gthread_yield (void)
+{
+  return __gthr_wince_yield ();
+}
+
+__GTHREAD_INLINE int
+__gthread_once (__gthread_once_t *__once, void (*__func) (void))
+{
+  return __gthr_wince_once (__once, __func);
+}
+
+__GTHREAD_INLINE int
+__gthread_key_create (__gthread_key_t *__key, void (*__dtor) (void *))
+{
+  return __gthr_wince_key_create (__key, __dtor);
+}
+
+__GTHREAD_INLINE int
+__gthread_key_delete (__gthread_key_t __key)
+{
+  return __gthr_wince_key_delete (__key);
+}
+
+__GTHREAD_INLINE void *
+__gthread_getspecific (__gthread_key_t __key)
+{
+  return __gthr_wince_getspecific (__key);
+}
+
+__GTHREAD_INLINE int
+__gthread_setspecific (__gthread_key_t __key, const void *__ptr)
+{
+  return __gthr_wince_setspecific (__key, __ptr);
+}
+
+__GTHREAD_INLINE void
+__gthread_mutex_init_function (__gthread_mutex_t *__mutex)
+{
+  __gthr_wince_mutex_init_function (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_mutex_destroy (__gthread_mutex_t *__mutex)
+{
+  __gthr_wince_mutex_destroy (__mutex);
+  return 0;
+}
+
+__GTHREAD_INLINE int
+__gthread_mutex_lock (__gthread_mutex_t *__mutex)
+{
+  return __gthr_wince_mutex_lock (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_mutex_trylock (__gthread_mutex_t *__mutex)
+{
+  return __gthr_wince_mutex_trylock (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_mutex_unlock (__gthread_mutex_t *__mutex)
+{
+  return __gthr_wince_mutex_unlock (__mutex);
+}
+
+__GTHREAD_INLINE void
+__gthread_recursive_mutex_init_function (__gthread_recursive_mutex_t *__mutex)
+{
+  __gthr_wince_recursive_mutex_init_function (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
+{
+  __gthr_wince_recursive_mutex_destroy (__mutex);
+  return 0;
+}
+
+__GTHREAD_INLINE int
+__gthread_recursive_mutex_lock (__gthread_recursive_mutex_t *__mutex)
+{
+  return __gthr_wince_recursive_mutex_lock (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_recursive_mutex_trylock (__gthread_recursive_mutex_t *__mutex)
+{
+  return __gthr_wince_recursive_mutex_trylock (__mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_recursive_mutex_unlock (__gthread_recursive_mutex_t *__mutex)
+{
+  return __gthr_wince_recursive_mutex_unlock (__mutex);
+}
+
+__GTHREAD_INLINE void
+__gthread_cond_init_function (__gthread_cond_t *__cond)
+{
+  __gthr_wince_cond_init_function (__cond);
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_destroy (__gthread_cond_t *__cond)
+{
+  __gthr_wince_cond_destroy (__cond);
+  return 0;
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_broadcast (__gthread_cond_t *__cond)
+{
+  return __gthr_wince_cond_broadcast (__cond);
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_signal (__gthread_cond_t *__cond)
+{
+  return __gthr_wince_cond_signal (__cond);
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_wait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex)
+{
+  return __gthr_wince_cond_wait (__cond, __mutex);
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_timedwait (__gthread_cond_t *__cond, __gthread_mutex_t *__mutex,
+			  const __gthread_time_t *__abs_time)
+{
+  return __gthr_wince_cond_timedwait (__cond, __mutex, __abs_time);
+}
+
+__GTHREAD_INLINE int
+__gthread_cond_wait_recursive (__gthread_cond_t *__cond,
+			       __gthread_recursive_mutex_t *__mutex)
+{
+  return __gthr_wince_cond_wait_recursive (__cond, __mutex);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#else /* !UNDER_CE || _LIBOBJC */
+
 /* So we can test Windows version numbers.  */
 #include <stdlib.h>
 
@@ -882,5 +1187,7 @@ __gthread_cond_wait_recursive (__gthread_cond_t *__cond,
 #endif
 
 #endif /* _LIBOBJC */
+
+#endif /* !UNDER_CE || _LIBOBJC */
 
 #endif /* ! GCC_GTHR_WIN32_H */

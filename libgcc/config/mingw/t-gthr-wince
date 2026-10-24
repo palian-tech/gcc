@@ -1,0 +1,4 @@
+# Windows CE (arm-mingw32ce, sh4-mingw32ce): the win32 thread model
+# without the Vista APIs (gthr-win32.h, UNDER_CE). One module, so that
+# its TLS slot and key destructor list exist once per program.
+LIB2ADDEH += $(srcdir)/config/i386/gthr-wince.c
