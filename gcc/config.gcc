@@ -2393,7 +2393,6 @@ arm-*-mingw32*)
 	case ${enable_threads} in
 	  "" | yes | win32)
 	  thread_file='win32'
-	  tmake_file="${tmake_file} i386/t-gthr-win32"
 	  ;;
 	esac
 	tmake_file="${tmake_file} arm/t-arm-softfp soft-fp/t-softfp"
