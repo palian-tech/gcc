@@ -4779,6 +4779,11 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init,
   /* Assume we don't need a guard.  */
   tree guard_if_stmt = NULL_TREE;
 
+  /* Thread-local variables are only ever initialized here (handle_tls_init)
+     and have no static destructor to fall back on, so register their
+     destructor with __cxa_thread_atexit even with -fno-use-cxa-atexit.  */
+  bool use_atexit = flag_use_cxa_atexit || CP_DECL_THREAD_LOCAL_P (decl);
+
   /* We need a guard if this is an object with external linkage that
      might be initialized in more than one place.  (For example, a
      static data member of a template, when the data member requires
@@ -4788,7 +4793,7 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init,
       tree guard = get_guard (decl);
       tree guard_cond;
 
-      if (flag_use_cxa_atexit)
+      if (use_atexit)
 	{
 	  /* When using __cxa_atexit, we just check the GUARD as we
 	     would for a local static.  We never try to destroy
@@ -4817,7 +4822,7 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init,
       guard_if_stmt = begin_if_stmt ();
       finish_if_stmt_cond (guard_cond, guard_if_stmt);
 
-      if (flag_use_cxa_atexit)
+      if (use_atexit)
 	/* Set the GUARD now.  */
 	finish_expr_stmt (set_guard (guard));
     }
@@ -4835,7 +4840,7 @@ one_static_initialization_or_destruction (bool initp, tree decl, tree init,
 
       /* If we're using __cxa_atexit, register a function that calls the
 	 destructor for the object.  */
-      if (flag_use_cxa_atexit)
+      if (use_atexit)
 	finish_expr_stmt (register_dtor_fn (decl, omp_target));
     }
   else
