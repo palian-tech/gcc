@@ -138,6 +138,9 @@
                                                       \
     fputs ("\t.secrel32\t", FILE);                    \
     assemble_name (FILE, LABEL);                      \
+    if ((OFFSET) != 0)                                \
+      fprintf (FILE, "+" HOST_WIDE_INT_PRINT_DEC,     \
+	       (HOST_WIDE_INT) (OFFSET));             \
   } while (0)
 
 /* Align output to a power of two.  Note ".align 0" is redundant,
