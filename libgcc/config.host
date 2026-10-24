@@ -588,7 +588,7 @@ arm*-*-eabi* | arm*-*-symbianelf* | arm*-*-rtems*)
 	;;
 arm*-*-mingw32ce* | arm*-*-cegcc*)
 	extra_parts="crtbegin.o crtend.o"
-	tmake_file="$tmake_file arm/t-wince-pe mingw/t-wince-atomic"
+	tmake_file="$tmake_file arm/t-wince-pe mingw/t-wince-atomic mingw/t-wince-clock"
 	case ${target_thread_file} in
 	  win32)
 	    tmake_file="$tmake_file mingw/t-gthr-wince"
@@ -1422,7 +1422,7 @@ s390x-ibm-tpf*)
 	;;
 sh4*-*-mingw32ce*)
 	extra_parts="crtbegin.o crtend.o"
-	tmake_file="$tmake_file sh/t-sh sh/t-wince-pe t-fdpbit mingw/t-wince-atomic"
+	tmake_file="$tmake_file sh/t-sh sh/t-wince-pe t-fdpbit mingw/t-wince-atomic mingw/t-wince-clock"
 	case ${target_thread_file} in
 	  win32)
 	    tmake_file="$tmake_file mingw/t-gthr-wince"

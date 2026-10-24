@@ -37,6 +37,14 @@
 #include <sys/syscall.h>
 #endif
 
+#ifdef UNDER_CE
+#include <time.h>
+// libgcc's millisecond clocks on GetTickCount (config/i386/clock-wince.c):
+// Windows CE's GetSystemTime often only counts seconds.
+extern "C" void __wince_clock_realtime(struct timespec*);
+extern "C" void __wince_clock_monotonic(struct timespec*);
+#endif
+
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -50,7 +58,12 @@ _GLIBCXX_BEGIN_INLINE_ABI_NAMESPACE(_V2)
     system_clock::time_point
     system_clock::now() noexcept
     {
-#ifdef _GLIBCXX_USE_CLOCK_REALTIME
+#if defined(UNDER_CE)
+      timespec tp;
+      __wince_clock_realtime(&tp);
+      return time_point(duration(chrono::seconds(tp.tv_sec)
+				 + chrono::nanoseconds(tp.tv_nsec)));
+#elif defined(_GLIBCXX_USE_CLOCK_REALTIME)
       timespec tp;
       // -EINVAL, -EFAULT
 #ifdef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL
@@ -78,7 +91,12 @@ _GLIBCXX_BEGIN_INLINE_ABI_NAMESPACE(_V2)
     steady_clock::time_point
     steady_clock::now() noexcept
     {
-#ifdef _GLIBCXX_USE_CLOCK_MONOTONIC
+#if defined(UNDER_CE)
+      timespec tp;
+      __wince_clock_monotonic(&tp);
+      return time_point(duration(chrono::seconds(tp.tv_sec)
+				 + chrono::nanoseconds(tp.tv_nsec)));
+#elif defined(_GLIBCXX_USE_CLOCK_MONOTONIC)
       timespec tp;
       // -EINVAL, -EFAULT
 #ifdef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL
