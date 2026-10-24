@@ -50,9 +50,17 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 
    4. Key destructors (__gthread_key_create) run when a thread created by
       __gthread_create returns, not when a CreateThread thread exits.
+      Windows CE sends no thread-detach notification to a static EXE, so
+      thread_local destructors (registered with __cxa_thread_atexit even
+      though Windows CE is configured without __cxa_atexit) run for
+      std::thread threads and for the main thread at exit only.
 
    5. Timed mutexes are not supported (libstdc++ then builds
       std::timed_mutex from a condition variable).
+
+   6. Absolute timeouts are CLOCK_REALTIME times of std::chrono::
+      system_clock, which on Windows CE is the millisecond clock of
+      config/i386/clock-wince.c, not GetSystemTime (often whole seconds).
 
    __gthread_active_p is always true: mingwrt's _CRT_MT is 0 unless
    -mthreads, and Windows CE has no -mthreads runtime DLL.

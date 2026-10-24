@@ -36,6 +36,9 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+/* clock-wince.c.  */
+extern void __wince_clock_realtime (struct timespec *);
+
 #ifndef ERROR_NOT_ENOUGH_MEMORY
 #define ERROR_NOT_ENOUGH_MEMORY 8
 #endif
@@ -580,35 +583,27 @@ __gthr_wince_cond_wait (__gthread_cond_t *cond, __gthread_mutex_t *mutex)
   return cond_wait (cond, INFINITE, unlock_mutex, lock_mutex, mutex);
 }
 
-/* The number of 100-nanoseconds between 1/1/1601 and 1/1/1970. */
-#define FILETIME_1970 116444736000000000ULL
 #define NSEC100_PER_SEC (1000000000ULL / 100)
 #define NSEC100_PER_MSEC (NSEC100_PER_SEC / 1000)
 #define CEIL_DIV(X, Y) (((X) + (Y) - 1) / (Y))
 
-/* ABS_TIME (CLOCK_REALTIME) as milliseconds from now.  Windows CE 5.0
-   has no GetSystemTimeAsFileTime.  */
+/* ABS_TIME (CLOCK_REALTIME) as milliseconds from now, measured with
+   the clock of std::chrono::system_clock (clock-wince.c), which has
+   millisecond steps where GetSystemTime may only count seconds.  */
 
 static DWORD
 abs_to_rel_ms (const __gthread_time_t *abs_time)
 {
-  SYSTEMTIME st;
-  union {
-    ULONGLONG nsec100;
-    FILETIME ft;
-  } now;
-  ULONGLONG abs_nsec100, ms;
+  struct timespec now;
+  ULONGLONG now_nsec100, abs_nsec100, ms;
 
-  GetSystemTime (&st);
-  if (!SystemTimeToFileTime (&st, &now.ft))
-    return 0;
-  now.nsec100 -= FILETIME_1970;
-
+  __wince_clock_realtime (&now);
+  now_nsec100 = (ULONGLONG) now.tv_sec * NSEC100_PER_SEC + now.tv_nsec / 100;
   abs_nsec100 = (ULONGLONG) abs_time->tv_sec * NSEC100_PER_SEC
 		+ CEIL_DIV (abs_time->tv_nsec, 100);
-  if (abs_nsec100 <= now.nsec100)
+  if (abs_nsec100 <= now_nsec100)
     return 0;
-  ms = CEIL_DIV (abs_nsec100 - now.nsec100, NSEC100_PER_MSEC);
+  ms = CEIL_DIV (abs_nsec100 - now_nsec100, NSEC100_PER_MSEC);
   return ms >= INFINITE ? INFINITE - 1 : (DWORD) ms;
 }
 

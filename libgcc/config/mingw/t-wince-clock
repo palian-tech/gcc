@@ -1,0 +1,3 @@
+# Windows CE (arm-mingw32ce, sh4-mingw32ce): millisecond clocks on
+# GetTickCount for std::chrono and the thread layer's timed waits.
+LIB2ADD += $(srcdir)/config/i386/clock-wince.c
