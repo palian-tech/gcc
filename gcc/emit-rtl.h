@@ -136,6 +136,12 @@ struct GTY(()) rtl_data {
   /* Dynamic Realign Argument Pointer used for realigning stack.  */
   rtx drap_reg;
 
+  /* The pseudo that holds the base of the variables that need more
+     alignment than the stack has, and its value in terms of the frame
+     pointer, for the debug info when the pseudo gets no hard register.  */
+  rtx dynamic_stack_base;
+  rtx dynamic_stack_base_value;
+
   /* Offset to end of allocated area of stack frame.
      If stack grows down, this is the address of the last stack slot allocated.
      If stack grows up, this is the address for the next slot.  */

@@ -16433,6 +16433,13 @@ mem_loc_descriptor (rtx rtl, machine_mode mode,
 	  mem_loc_result = based_loc_descr (crtl->drap_reg, 0,
 					    VAR_INIT_STATUS_INITIALIZED);
 	}
+      else if (crtl->dynamic_stack_base == rtl
+	       && crtl->dynamic_stack_base_value)
+	/* The base of the realigned variables got no hard register, as
+	   at -O0 when it lives across a setjmp receiver.  Compute it from
+	   the frame base instead.  */
+	mem_loc_result = mem_loc_descriptor (crtl->dynamic_stack_base_value,
+					     mode, mem_mode, initialized);
       break;
 
     case SIGN_EXTEND:
