@@ -1619,6 +1619,20 @@ expand_stack_vars (bool (*pred) (unsigned), class stack_vars_data *data)
 		 PREFERRED_STACK_BOUNDARY / BITS_PER_UNIT);
 	      large_base = get_dynamic_stack_base (loffset, large_align, base);
 	      large_allocation_done = true;
+	      if (base == virtual_stack_vars_rtx && REG_P (large_base))
+		{
+		  /* The value get_dynamic_stack_base computes, with
+		     virtual_stack_vars_rtx instantiated as
+		     instantiate_virtual_regs does it.  */
+		  HOST_WIDE_INT align = large_align / BITS_PER_UNIT;
+		  rtx value
+		    = plus_constant (Pmode, frame_pointer_rtx,
+				     targetm.starting_frame_offset ()
+				     + loffset + align - 1);
+		  crtl->dynamic_stack_base = large_base;
+		  crtl->dynamic_stack_base_value
+		    = gen_rtx_AND (Pmode, value, gen_int_mode (-align, Pmode));
+		}
 	    }
 
 	  gcc_assert (large_base != NULL);
